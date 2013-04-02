@@ -21,7 +21,9 @@ start() ->
   application:start(webcrutches).
 
 start(_StartType, _StartArgs) ->
-  start_web(),
+  wcr:ensure_started(crypto),
+  wcr:ensure_started(ranch),
+  wcr:ensure_started(cowboy),
   wcr_sup:start_link().
 
 stop(_State) ->

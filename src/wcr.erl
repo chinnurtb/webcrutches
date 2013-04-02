@@ -18,6 +18,9 @@
         , clear_session_cookie/1
         , record_to_proplist/1
         , record_to_proplist/2
+        , ensure_started/1
+        , propget/2
+        , propget/3
         ]).
 
 -include("wcr_internal.hrl").
@@ -25,7 +28,7 @@
 -compile({parse_transform, exprecs}).
 -export_records([wcr_handler_state, wcr_user, wcr_session]).
 
--opaque handler_state() :: #wcr_handler_state{}.
+-type handler_state() :: #wcr_handler_state{}.
 -type handler_return() :: {cowboy_req:req(), #wcr_handler_state{}}.
 -type chain_return() :: {chain_ok|chain_error
                          , cowboy_req:req(), #wcr_handler_state{}}.
@@ -58,7 +61,7 @@ render_page(HttpStatus, TemplateName, Req0,
               already_rendered=false
              }) ->
   %% lager:debug("Before render: vars=~p", [PageVars]),
-  Body = ?MODULE:render(TemplateName, PageVars),
+  Body = wcr_template:render(TemplateName, PageVars),
   Headers = [ {<<"Content-Type">>, <<"text/html">>}
             , {<<"Expires">>, <<"0">>}
             ],
@@ -103,12 +106,11 @@ response_json(HttpStatus, J, Req0, State=#wcr_handler_state{}) ->
 %% @doc Redirects user
 -spec redirect(URL :: binary()|string(),
                Req0 :: cowboy_req:req(),
-               State :: wcr:handler_state()) ->
-                  wcr:handler_return().
+               State :: wcr:handler_state()) -> wcr:handler_return().
 
-redirect(URL, Req0, State=#wcr_handler_state{}) ->
+redirect(URL, Req0, State) ->
   {ok, Req} = cowboy_req:reply(
-                301, [ {<<"Location">>, macaba:as_binary(URL)}
+                301, [ {<<"Location">>, wcr_conv:as_binary(URL)}
                      , {<<"Expires">>, <<"0">>}
                      ],
                 <<>>, Req0),
@@ -120,21 +122,22 @@ redirect(URL, Req0, State=#wcr_handler_state{}) ->
                     V :: any(),
                     State :: wcr:handler_state()) -> wcr:handler_state().
 
-state_set_var(K, V, State = #wcr_handler_state{ page_vars=P0 }) ->
-  P = orddict:store(K, V, P0),
-  State#wcr_handler_state{ page_vars = P }.
+state_set_var(K, V, State) ->
+  P = orddict:store(K, V, '#get-'(page_vars, State)),
+  '#set-'({page_vars, P}, State).
 
 %%%-----------------------------------------------------------------------------
 %% @doc Retrieves value of some page_vars element
--spec state_get_var(K :: atom(), State :: mcweb:html_state()) -> any().
+-spec state_get_var(K :: atom(), State :: wcwr:handler_state()) -> any().
 
-state_get_var(K, #wcr_handler_state{ page_vars=PV }) ->
-  orddict:fetch(K, PV).
+state_get_var(K, State) ->
+  orddict:fetch(K, '#get-'(page_vars, State)).
 
 %%%-----------------------------------------------------------------------------
 -spec get_user_save_to_state(Req :: cowboy_req:req(),
                              State :: wcr:handler_state()) ->
                                 wcr:handler_return().
+
 %% @doc Attempts to extract cookie and find session with that cookie, else
 %% returns anonymous user. Saves result state or clears cookie in request
 get_user_save_to_state(Req0, State0) ->
@@ -143,7 +146,7 @@ get_user_save_to_state(Req0, State0) ->
   {Req, State#wcr_handler_state{user=User}}.
 
 %%%-----------------------------------------------------------------------------
--spec get_user(Req :: cowboy_req:req()) -> {#ssweb_user{}, cowboy_req:req()}.
+-spec get_user(Req :: cowboy_req:req()) -> {#wcr_user{}, cowboy_req:req()}.
 %% @doc Extracts cookie from request, find user and return user and slightly
 %% modified request
 get_user(Req0) ->
@@ -174,12 +177,13 @@ create_session_for(U=#wcr_user{}, Req0, State0) ->
   %% lager:debug("set resp cookie ~p=~p", [ses_cookie_name(), SesId]),
   Req = cowboy_req:set_resp_cookie(
           ses_cookie_name(), SesId, [{path, <<"/">>}], Req0),
-  State = State0#core_web_state{ user=U },
+  State = State0#wcr_handler_state{ user=U },
   {Req, State}.
 
 %% @doc Gets ses cookie name from config
 ses_cookie_name() ->
-  {ok, CookieName} = macaba_conf:get([<<"board">>, <<"session_cookie_name">>]),
+  %%{ok, CookieName} = macaba_conf:get([<<"board">>, <<"session_cookie_name">>]),
+  {ok, CookieName} = application:get_env(webcrutches, cookie_name),
   CookieName.
 
 %%%------------------------------------------------------------------------
@@ -193,6 +197,39 @@ clear_session_cookie(Req0) ->
 record_to_proplist(Rec) -> record_to_proplist(wcr, Rec).
 record_to_proplist(Module, Rec) ->
   [{F, Module:'#get-'(F, Rec)} || F <- Module:'#info-'(Rec, fields)].
+%%-----------------------------------------------------------------------------
+ensure_started(App) ->
+  ensure_started_1(App, 25).
+
+ensure_started_1(_, 0) -> erlang:error({macaba, ensure_started, retries_count});
+ensure_started_1(App, Retries) ->
+  case application:start(App) of
+    {error, {not_started, Dependency}} ->
+      ensure_started_1(Dependency, Retries-1),
+      ensure_started_1(App, Retries-1);
+    _ -> %{error, {already_started, _App}} ->
+      ok
+  end.
+
+%%-----------------------------------------------------------------------------
+%% @doc Faster replacement for proplists:get_value
+propget(K, Proplist) ->
+  case lists:keyfind(K, 1, Proplist) of
+    false ->
+      undefined;
+    {K, V} ->
+      V
+  end.
+
+%%-----------------------------------------------------------------------------
+%% @doc Faster replacement for proplists:get_value with default value
+propget(K, Proplist, Default) ->
+  case lists:keyfind(K, 1, Proplist) of
+    false ->
+      Default;
+    {K, V} ->
+      V
+  end.
 
 %%% Local Variables:
 %%% erlang-indent-level: 2

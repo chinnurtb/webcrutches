@@ -14,7 +14,8 @@
                  ]},
   {mod, { ssweb_app, []}},
   {env, [
-	{web_port, 12000}
+	  {web_port, 12000}
+	, {cookie_name, <<"webcrutch_ses">>}
 	]}
  ]}.
 

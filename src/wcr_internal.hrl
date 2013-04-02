@@ -16,8 +16,8 @@
 -record(wcr_session, {
           %% this like, allows ipv6 too, but will we ever support that?
           sesid = <<>> :: binary(),
-          remote_addr = {0,0,0,0} :: ipaddr_t(),
-          user :: #mcb_user{}
+          remote_addr = {0,0,0,0} :: {byte(),byte(),byte(),byte()},
+          user :: #wcr_user{}
          }).
 
 -endif. % WEBCRUTCHES_INTERNAL_HRL_INCLUDED
