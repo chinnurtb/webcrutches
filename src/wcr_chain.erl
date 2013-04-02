@@ -5,8 +5,8 @@
 -module(wcr_chain).
 
 -export([ chain_run/3
-        , chain_success/1, chain_success/2
-        , chain_fail/1, chain_fail/2
+        , chain_success/2
+        , chain_fail/2
         ]).
 
 -include("wcr_internal.hrl").
@@ -30,11 +30,18 @@ chain_run([F | Tail], Req, State) ->
     {chain_fail, Req3, State3} -> {error, Req3, State3}
   end.
 
-chain_success(Req, State = #wcr_handler_state{}) -> {chain_ok, Req, State}.
-chain_success({Req, State = #wcr_handler_state{}}) -> {chain_ok, Req, State}.
 
-chain_fail(Req, State = #wcr_handler_state{}) -> {chain_fail, Req, State}.
-chain_fail({Req, State = #wcr_handler_state{}}) -> {chain_fail, Req, State}.
+-spec chain_success(Req :: cowboy_req:req(),
+                    State :: wcr:handler_state()) ->
+                       {chain_ok, Req2 :: cowboy_req:req(),
+                        State2 :: wcr:handler_state()}.
+chain_success(Req, State) -> {chain_ok, Req, State}.
+
+-spec chain_fail(Req :: cowboy_req:req(),
+                 State :: wcr:handler_state()) ->
+                       {chain_fail, Req2 :: cowboy_req:req(),
+                        State2 :: wcr:handler_state()}.
+chain_fail(Req, State) -> {chain_fail, Req, State}.
 
 
 %%% Local Variables:
