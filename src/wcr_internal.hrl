@@ -1,0 +1,7 @@
+-ifndef(WEBCRUTCHES_INTERNAL_HRL_INCLUDED).
+-define(WEBCRUTCHES_INTERNAL_HRL_INCLUDED, 1).
+
+-record(wcr_handler_state, {
+         }).
+
+-endif. % WEBCRUTCHES_INTERNAL_HRL_INCLUDED
