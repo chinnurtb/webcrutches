@@ -1,0 +1,21 @@
+{application, webcrutches,
+ [
+  {description, "Web and REST application crutchwork"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  sasl,
+                  kernel,
+                  stdlib,
+                  gproc,
+                  crypto,
+                  ranch,
+                  cowboy
+                 ]},
+  {mod, { ssweb_app, []}},
+  {env, [
+	{web_port, 12000}
+	]}
+ ]}.
+
+%% -*- mode:erlang; -*-
