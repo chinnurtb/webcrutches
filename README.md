@@ -16,4 +16,6 @@ Cowboy.
 
 ## Can I use in production?
 
-Please don't. Maybe later.
+Please don't. Maybe later. Instead have a look at
+[Axiom](https://github.com/tsujigiri/axiom) and
+[Giallo](https://github.com/kivra/giallo)
